@@ -39,6 +39,8 @@ public:
         LIB_DIRS_BINARY,
         DEPS_COMPONENT_NOT_DECLARE,
         EXTERNAL_DEPS_INNER,
+        INCLUDES_ABSOLUTE_DEPS_OTHER_ENHANCED_BINARY,
+        IMPORT_OTHER_ENHANCED_BINARY,
         ALL
     };
 
@@ -73,11 +75,15 @@ public:
         Err *err) const;
     bool CheckIncludesAbsoluteDepsOther(const Target *target, const std::string &label, const std::string &includes,
         Err *err) const;
+    bool CheckIncludesAbsoluteDepsOtherEnhanced(const Target *target, const std::string &label, const std::string &includes,
+        Err *err) const;    
     bool CheckInnerApiVisibilityDenied(const Item *item, const OhosComponent *component, const std::string &label,
         const std::string &deps, Err *err) const;
     bool CheckTargetAbsoluteDepsOther(const Item *item, const OhosComponent *component, const std::string &label,
         const std::string &deps, bool is_external_deps, Err *err) const;
     bool CheckImportOther(const FunctionCallNode *function, const BuildSettings *build_settings,
+        const std::string &label, const std::string &deps, Err *err) const;
+    bool CheckImportOtherEnhanced(const FunctionCallNode *function, const BuildSettings *build_settings,
         const std::string &label, const std::string &deps, Err *err) const;
     bool CheckExternalDepsInner(const Item *item, const OhosComponent *component, const std::string &label,
                                 const std::string &deps, bool is_external_deps, Err *err) const;
@@ -126,11 +132,15 @@ private:
     bool InterceptInnerApiNotDeclare(const Item *item, const std::string &label, Err *err) const;
     bool InterceptIncludesAbsoluteDepsOther(const Target *target, const std::string &label, const std::string &includes,
         Err *err) const;
+    bool InterceptIncludesAbsoluteDepsOtherEnhanced(const Target *target, const std::string &label, const std::string &includes,
+        Err *err) const;
     bool InterceptInnerApiVisibilityDenied(const Item *item, const std::string &from_label, const std::string &to_label,
         Err *err) const;
     bool InterceptTargetAbsoluteDepsOther(const Item *item, const std::string &label, const std::string &deps,
         Err *err) const;
     bool InterceptImportOther(const FunctionCallNode* function, const std::string &label, const std::string &deps,
+        Err *err) const;
+    bool InterceptImportOtherEnhanced(const FunctionCallNode* function, const std::string &label, const std::string &deps,
         Err *err) const;
     bool InterceptDepsComponentNotDeclare(const Item *item, const std::string &label, const std::string &from_name,
                                           const std::string &to_name, const std::string &path, Err *err) const;
