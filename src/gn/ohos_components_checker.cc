@@ -557,6 +557,44 @@ bool OhosComponentChecker::InterceptIncludesAbsoluteDepsOther(const Target *targ
     return false;
 }
 
+bool OhosComponentChecker::InterceptIncludesAbsoluteDepsOtherEnhanced(const Target *target, const std::string &label,
+    const std::string &includes, Err *err) const
+{
+    if (!IsIntercept(ruleSwitch_, INCLUDES_ABSOLUTE_DEPS_OTHER_ENHANCED_BINARY)) {
+        return true;
+    }
+
+    if (auto res = fuzzy_match_.find("deps_includes_absolute"); res != fuzzy_match_.end()) {
+        std::string includes_str(includes);
+        for (auto res_second : res->second) {
+            if (StartWith(Trim(includes_str), res_second)) {
+                return true;
+            }
+        }
+    }
+
+    if (auto res = includes_absolute_deps_other_.find(label); res != includes_absolute_deps_other_.end()) {
+        std::string includes_str(includes);
+        auto res_second = std::find(res->second.begin(), res->second.end(), Trim(includes_str));
+        if (res_second != res->second.end()) {
+            return true;
+        }
+    }
+
+    // 白名单调试模式: 打印但不中断，并收集拦截列表
+    if (whitelistDebug_) {
+        AddToInterceptedList("includes_absolute_deps_other", label, includes);
+        std::cerr << "[WHITELIST DEBUG] Enhanced directly use header files of other components blocked: " << label
+                 << " includes " << includes << std::endl;
+        return true;
+    }
+
+    *err = Err(target->defined_from(), "Do not directly use header files of other components (enhanced).",
+        "The item " + label + " do not directly use header files : " + includes + " of other components." +
+        "\n"
+        "Please use 'external_deps' dependent module.");
+    return false;
+}
 
 bool OhosComponentChecker::InterceptTargetAbsoluteDepsOther(const Item *item, const std::string &label,
     const std::string &deps, Err *err) const
@@ -653,6 +691,43 @@ bool OhosComponentChecker::InterceptImportOther(const FunctionCallNode *function
     }
 
     *err = Err(function->function(), "Not allow import other gni.",
+        label + " not allow import other gni : " + deps);
+    return false;
+}
+
+bool OhosComponentChecker::InterceptImportOtherEnhanced(const FunctionCallNode *function, const std::string &label,
+    const std::string &deps, Err *err) const
+{
+    if (!IsIntercept(ruleSwitch_, IMPORT_OTHER_ENHANCED_BINARY)) {
+        return true;
+    }
+
+    if (auto res = fuzzy_match_.find("deps_gni"); res != fuzzy_match_.end()) {
+        std::string deps_str(deps);
+        for (auto res_second : res->second) {
+            if (StartWith(Trim(deps_str), res_second)) {
+                return true;
+            }
+        }
+    }
+
+    if (auto res = import_other_.find(label); res != import_other_.end()) {
+        std::string deps_str(deps);
+        auto res_second = std::find(res->second.begin(), res->second.end(), Trim(deps_str));
+        if (res_second != res->second.end()) {
+            return true;
+        }
+    }
+
+    // 白名单调试模式: 打印但不中断，并收集拦截列表
+    if (whitelistDebug_) {
+        AddToInterceptedList("import_other", label, deps);
+        std::cerr << "[WHITELIST DEBUG] Enhanced Import other gni blocked: " << label
+                 << " imports " << deps << std::endl;
+        return true;
+    }
+
+    *err = Err(function->function(), "Not allow import other gni (enhanced).",
         label + " not allow import other gni : " + deps);
     return false;
 }
@@ -953,6 +1028,39 @@ bool OhosComponentChecker::CheckIncludesAbsoluteDepsOther(const Target *target, 
     return true;
 }
 
+bool OhosComponentChecker::CheckIncludesAbsoluteDepsOtherEnhanced(const Target *target, const std::string &label,
+    const std::string &includes, Err *err) const
+{
+    if (checkType_ <= CheckType::NONE || target == nullptr || (ignoreTest_ && target->testonly())) {
+        return true;
+    }
+
+    if (includes == "//" || !StartWith(includes, "//") || StartWith(includes, "//out/")
+        || StartWith(includes, "////out/") || StartWith(includes, "//prebuilts/")) {
+        return true;
+    }
+
+    const OhosComponent *component = target->ohos_component();
+    if (component == nullptr) {
+        return true;
+    }
+
+    for(const auto &path : component->modulePath()) {
+        if (StartWith(includes, path + "/")) {
+            return true;
+        }
+        if (includes.find(':') != std::string::npos && StartWith(includes, path)) {
+            return true;
+        }
+    }
+
+    if (checkType_ >= CheckType::INTERCEPT_IGNORE_TEST) {
+        return InterceptIncludesAbsoluteDepsOtherEnhanced(target, label, includes, err);
+    }
+    GenerateScanList("includes_absolute_deps_other_enhanced.list", component->subsystem(), component->name(), label, includes);
+    return true;
+}
+
 bool OhosComponentChecker::CheckInnerApiVisibilityDenied(const Item *item, const OhosComponent *component,
     const std::string &label, const std::string &deps, Err *err) const
 {
@@ -1034,6 +1142,34 @@ bool OhosComponentChecker::CheckImportOther(const FunctionCallNode *function, co
         return InterceptImportOther(function, label, deps, err);
     }
     GenerateScanList("import_other.list", component->subsystem(), component->name(), label, deps);
+    return true;
+}
+
+bool OhosComponentChecker::CheckImportOtherEnhanced(const FunctionCallNode *function, const BuildSettings *build_settings,
+    const std::string &label, const std::string &deps, Err *err) const
+{
+    if (checkType_ <= CheckType::NONE || function == nullptr || build_settings == nullptr) {
+        return true;
+    }
+    const OhosComponent *component = build_settings->GetOhosComponent(label);
+    if (component == nullptr) {
+        return true;
+    }
+    if (StartWith(deps, "//build/") || StartWith(deps, "//out/")
+        || StartWith(deps, "//prebuilts/")) {
+        return true;
+    }
+
+    for (const auto &path : component->modulePath()) {
+        if (StartWith(deps, path + "/")) {
+            return true;
+        }
+    }
+
+    if (checkType_ >= CheckType::INTERCEPT_IGNORE_TEST) {
+        return InterceptImportOtherEnhanced(function, label, deps, err);
+    }
+    GenerateScanList("import_other_enhanced.list", component->subsystem(), component->name(), label, deps);
     return true;
 }
 

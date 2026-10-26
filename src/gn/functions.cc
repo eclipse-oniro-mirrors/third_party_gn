@@ -691,6 +691,8 @@ Value RunImport(Scope* scope,
   if (checker != nullptr) {
     checker->CheckImportOther(function, scope->settings()->build_settings(),
                               input_dir.value(), import_file.value(), err);
+    checker->CheckImportOtherEnhanced(function, scope->settings()->build_settings(),
+                              input_dir.value(), import_file.value(), err);
   }
 
   std::string mapping_file = "";

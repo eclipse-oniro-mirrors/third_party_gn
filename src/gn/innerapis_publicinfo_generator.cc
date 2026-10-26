@@ -110,6 +110,9 @@ static bool TraverIncludeDirs(const Target *target, const OhosComponentChecker *
         if (!checker->CheckIncludesAbsoluteDepsOther(target, label, dir.value(), err)) {
             return false;
         }
+        if (!checker->CheckIncludesAbsoluteDepsOtherEnhanced(target, label, dir.value(), err)) {
+            return false;
+        }
     }
     return true;
 }
@@ -127,6 +130,9 @@ static bool CheckIncludes(const Target *target, const OhosComponentChecker *chec
     }
     if (checker != nullptr) {
         if (!checker->CheckIncludesAbsoluteDepsOther(target, label, dir, err)) {
+            return false;
+        }
+        if (!checker->CheckIncludesAbsoluteDepsOtherEnhanced(target, label, dir, err)) {
             return false;
         }
     }
